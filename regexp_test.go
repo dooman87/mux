@@ -39,6 +39,34 @@ func Test_findFirstQueryKey(t *testing.T) {
 	}
 }
 
+func Fuzz_findFirstQueryKey(f *testing.F) {
+	f.Add("a=1&b=2")
+	f.Add("a=1&a=2&a=banana")
+	f.Add("ascii=%3Ckey%3A+0x90%3E")
+	f.Add("a=1;b=2")
+	f.Add("a=1&a=2;a=banana")
+	f.Add("a==")
+	f.Add("a=%2")
+	f.Add("a=20&%20%3F&=%23+%25%21%3C%3E%23%22%7B%7D%7C%5C%5E%5B%5D%60%E2%98%BA%09:%2F@$%27%28%29%2A%2C%3B&a=30")
+	f.Add("a=1& ?&=#+%!<>#\"{}|\\^[]`☺\t:/@$'()*,;&a=5")
+	f.Add("a=xxxxxxxxxxxxxxxx&b=YYYYYYYYYYYYYYY&c=ppppppppppppppppppp&f=ttttttttttttttttt&a=uuuuuuuuuuuuu")
+
+	f.Fuzz(func(t *testing.T, query string) {
+		all, _ := url.ParseQuery(query)
+		for key, want := range all {
+			t.Run(key, func(t *testing.T) {
+				got, ok := findFirstQueryKey(query, key)
+				if !ok {
+					t.Error("Did not get expected key", key)
+				}
+				if !reflect.DeepEqual(got, want[0]) {
+					t.Errorf("findFirstQueryKey(%s,%s) = %v, want %v", query, key, got, want[0])
+				}
+			})
+		}
+	})
+}
+
 func Benchmark_findQueryKey(b *testing.B) {
 	tests := []string{
 		"a=1&b=2",
